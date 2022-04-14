@@ -48,12 +48,14 @@ function DynamicTable(props: any) {
     }, [props.data])
 
     const rowIsEmpty = (row: any) => {
+        let isEmpty = true
         columns.forEach((col: string) => {
+            console.log(row[col])
             if (row[col] !== "") {
-                return false
+                isEmpty = false
             }
         })
-        return true
+        return isEmpty
     }
 
     const deleteRow = (idx: number) => {
@@ -74,42 +76,25 @@ function DynamicTable(props: any) {
     const onChange = (event: React.ChangeEvent<HTMLInputElement>, idx: number) => {
         const value = event.target.value;
         const name = event.target.name;
-        const newRowData = rowData.map((currentRowData: RowData, i: number) => {
-            if (i === idx) {
-                let newRow = { ...currentRowData.row, [name]: value }
-                return { ...currentRowData, row: newRow };
-            }
-            return currentRowData;
-        });
-        setRowData(newRowData);
 
+        let newRowData = [...rowData]
+        let newRow = { ...newRowData[idx].row, [name]: value }
+        newRowData[idx] = { ...newRowData[idx], row: newRow }
+        setRowData(newRowData)
     };
 
     const onRevert = (idx: number) => {
-        const newRowData = rowData.map((currentRowData: RowData, i: number) => {
-            if (i === idx) {
-                console.log(currentRowData)
-                return { ...currentRowData, row: currentRowData.previous, previous: null, isEditMode: !currentRowData.isEditMode };
-            }
-            return currentRowData;
-        });
+        let newRowData = [...rowData]
+        newRowData[idx] = { ...newRowData[idx], row: newRowData[idx].previous, previous: null, isEditMode: !newRowData[idx].isEditMode }
         setRowData(newRowData)
     };
 
     const onConfirmChange = (idx: number) => {
-        let toDeleteRow = false;
-        const newRowData = rowData.map((currentRowData: RowData, i: number) => {
-            if (i === idx) {
-                if (rowIsEmpty(currentRowData.row)) {
-                    toDeleteRow = true
-                }
-                return { ...currentRowData, previous: null, isEditMode: !currentRowData.isEditMode };
-            }
-            return currentRowData;
-        });
-        if (toDeleteRow) {
+        if (rowIsEmpty(rowData[idx].row)) {
             deleteRow(idx)
         } else {
+            let newRowData = [...rowData]
+            newRowData[idx] = { ...newRowData[idx], previous: null, isEditMode: !newRowData[idx].isEditMode }
             setRowData(newRowData)
         }
     }
