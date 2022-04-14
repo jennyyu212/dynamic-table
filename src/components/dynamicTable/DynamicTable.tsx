@@ -13,49 +13,10 @@ import EditIcon from "@mui/icons-material/EditOutlined";
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import RevertIcon from "@mui/icons-material/NotInterestedOutlined";
 
-// const useStyles = makeStyles((theme: Theme) => ({
-//       root: {
-//             width: "100%",
-//             marginTop: theme.spacing(3),
-//             overflowX: "auto"
-//       },
-//       table: {
-//             minWidth: 650
-//       },
-//       selectTableCell: {
-//             width: 60
-//       },
-//       tableCell: {
-//             width: 130,
-//             height: 40
-//       },
-//       input: {
-//             width: 130,
-//             height: 40
-//       }
-// }));
-
 interface RowData {
     row: any;
     previous: any;
-    id: number;
     isEditMode: boolean;
-}
-
-const CustomTableCell = ({ row, colName, onChange }: { row: RowData, colName: string, onChange: any }) => {
-    return (
-        <TableCell align="left">
-            {row.isEditMode ? (
-                <Input
-                    value={row.row[colName]}
-                    name={colName}
-                    onChange={e => onChange(e, row.id)}
-                />
-            ) : (
-                row.row[colName]
-            )}
-        </TableCell>
-    );
 }
 
 
@@ -67,7 +28,7 @@ function DynamicTable(props: any) {
     useEffect(() => {
         let tempData: RowData[] = [];
         for (let i = 0; i < props.data.length; i++) {
-            const rowObj = { row: props.data[i], previous: null, id: i, isEditMode: false }
+            const rowObj = { row: props.data[i], previous: null, isEditMode: false }
             tempData.push(rowObj)
         }
         setRowData(tempData)
@@ -77,8 +38,7 @@ function DynamicTable(props: any) {
         let cols = [];
         for (let i = 0; i < props.data.length; i++) {
             for (let col in props.data[i]) {
-                // if the column is not already included
-                // exclude id
+                // if the column is not already included, exclude id
                 if ((cols.indexOf(col) === -1) && (col != "_id")) {
                     cols.push(col);
                 }
@@ -87,14 +47,23 @@ function DynamicTable(props: any) {
         setColumns(cols)
     }, [props.data])
 
-    // useEffect(() => {
-    //     console.log(rowData)
-    // }, [rowData])
+    const rowIsEmpty = (row: any) => {
+        columns.forEach((col: string) => {
+            if (row[col] !== "") {
+                return false
+            }
+        })
+        return true
+    }
 
-    const onStartEditMode = (idx: any) => {
+    const deleteRow = (idx: number) => {
+        setRowData(rowData.filter((r: any, index: number) => index !== idx))
+    }
+
+    const onStartEditMode = (idx: number) => {
         setRowData(() => {
-            return rowData.map((currentRowData: any) => {
-                if (currentRowData.id === idx) {
+            return rowData.map((currentRowData: RowData, i: number) => {
+                if (i === idx) {
                     return { ...currentRowData, isEditMode: !currentRowData.isEditMode, previous: currentRowData.row };
                 }
                 return currentRowData;
@@ -105,8 +74,8 @@ function DynamicTable(props: any) {
     const onChange = (event: React.ChangeEvent<HTMLInputElement>, idx: number) => {
         const value = event.target.value;
         const name = event.target.name;
-        const newRowData = rowData.map(currentRowData => {
-            if (currentRowData.id === idx) {
+        const newRowData = rowData.map((currentRowData: RowData, i: number) => {
+            if (i === idx) {
                 let newRow = { ...currentRowData.row, [name]: value }
                 return { ...currentRowData, row: newRow };
             }
@@ -117,8 +86,8 @@ function DynamicTable(props: any) {
     };
 
     const onRevert = (idx: number) => {
-        const newRowData = rowData.map(currentRowData => {
-            if (currentRowData.id === idx) {
+        const newRowData = rowData.map((currentRowData: RowData, i: number) => {
+            if (i === idx) {
                 console.log(currentRowData)
                 return { ...currentRowData, row: currentRowData.previous, previous: null, isEditMode: !currentRowData.isEditMode };
             }
@@ -128,22 +97,29 @@ function DynamicTable(props: any) {
     };
 
     const onConfirmChange = (idx: number) => {
-        const newRowData = rowData.map(currentRowData => {
-            if (currentRowData.id === idx) {
-                console.log(currentRowData)
+        let toDeleteRow = false;
+        const newRowData = rowData.map((currentRowData: RowData, i: number) => {
+            if (i === idx) {
+                if (rowIsEmpty(currentRowData.row)) {
+                    toDeleteRow = true
+                }
                 return { ...currentRowData, previous: null, isEditMode: !currentRowData.isEditMode };
             }
             return currentRowData;
         });
-        setRowData(newRowData)
+        if (toDeleteRow) {
+            deleteRow(idx)
+        } else {
+            setRowData(newRowData)
+        }
     }
 
     return (
-        <Paper>
-            <Table aria-label="caption table">
+        <Paper sx={{ width: "60%", overflowX: "auto" }}>
+            <Table aria-label="caption table" sx={{ minWidth: 650 }}>
                 <TableHead>
                     <TableRow>
-                        <TableCell align="left" />
+                        <TableCell align="left" sx={{ width: 60 }} />
                         {columns.map((col: string, idx: number) => <TableCell align="left">{col}</TableCell>)}
                     </TableRow>
                 </TableHead>
@@ -166,13 +142,30 @@ function DynamicTable(props: any) {
                                     </IconButton>
                                 )}
                             </TableCell>
-                            {columns.map((col: string) => <CustomTableCell {...{ row: row, colName: col, onChange }} />)}
+                            {columns.map((col: string) => <CustomTableCell {...{ row: row, colName: col, onChange, rowNumber: idx }} />)}
                         </TableRow>
                     })}
 
                 </TableBody>
             </Table>
         </Paper>
+    );
+}
+
+const CustomTableCell = ({ row, colName, onChange, rowNumber }: { row: RowData, colName: string, onChange: any, rowNumber: number }) => {
+    return (
+        <TableCell align="left" sx={{ width: 60 }}>
+            {row.isEditMode ? (
+                <Input
+                    value={row.row[colName]}
+                    name={colName}
+                    onChange={e => onChange(e, rowNumber)}
+                    sx={{ width: 130, height: 40 }}
+                />
+            ) : (
+                row.row[colName]
+            )}
+        </TableCell>
     );
 }
 
